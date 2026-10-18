@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Job Portal</title>
+  <style>
+    body { font-family: Arial; max-width: 800px; margin: 30px auto; padding: 0 12px; background: #f3f4f6; }
+    h1 { margin-bottom: 4px; }
+    #userInfo { margin: 0 0 16px; }
+    .card { background: white; padding: 14px; margin: 10px 0; border-radius: 8px; box-shadow: 0 1px 3px #0002; }
+    input { padding: 9px; margin: 4px 4px 4px 0; }
+    button { padding: 8px 14px; border: 0; color: white; border-radius: 4px; cursor: pointer; margin-right: 6px; }
+    .apply { background: #7c3aed; } .applied { background: #9ca3af; cursor: default; }
+    .edit { background: #2563eb; } .del { background: #dc2626; } .save { background: #16a34a; }
+    #search { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Job Portal v2</h1>
+  <p id="userInfo"></p>
+
+  <div id="employerForm" class="card" style="display:none">
+    <h3 id="formTitle">Add Job</h3>
+    <input id="title" placeholder="Title">
+    <input id="company" placeholder="Company">
+    <input id="location" placeholder="Location">
+    <input id="salary" type="number" placeholder="Salary">
+    <br>
+    <button class="save" onclick="saveJob()">Save</button>
+    <button class="edit" onclick="resetForm()">Clear</button>
+  </div>
+
+  <input id="search" placeholder="Search by title, company or location..." oninput="renderJobs()">
+  <div id="jobs"></div>
+
+  <script>
+    let jobs = [];
+    let applied = new Set();
+    let editId = null;
+
+    function getUser() {
+      try { return JSON.parse(localStorage.getItem('user')); } catch (e) { return null; }
+    }
+    function isEmployer() { const u = getUser(); return u && u.role === 'EMPLOYER'; }
+    function isSeeker() { const u = getUser(); return u && u.role === 'JOB_SEEKER'; }
+
+    function showUser() {
+      const u = getUser();
+      const el = document.getElementById('userInfo');
+      if (u) {
+        el.innerHTML = 'Hello, <b>' + u.name + '</b> (' + u.role + ') | <a href="#" onclick="logout()">Logout</a>';
+      } else {
+        el.innerHTML = '<a href="login.html">Login</a> | <a href="register.html">Register</a>';
+      }
+      document.getElementById('employerForm').style.display = isEmployer() ? 'block' : 'none';
+    }
+
+    async function logout() {
+      try { await fetch('/api/logout', { method: 'POST' }); } catch (e) {}
+      localStorage.removeItem('user');
+      location.href = 'login.html';
+    }
+
+    async function loadApplied() {
+      applied = new Set();
+      if (!isSeeker()) return;
+      const res = await fetch('/applications/me');
+      if (res.ok) {
+        const list = await res.json();
+        list.forEach(a => applied.add(a.jobId));
+      }
+    }
+
+    async function loadJobs() {
+      const res = await fetch('/jobs');
+      jobs = await res.json();
+      renderJobs();
+    }
+
+    function renderJobs() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const box = document.getElementById('jobs');
+      box.innerHTML = '';
+      jobs.filter(j => (j.title + ' ' + j.company + ' ' + j.location).toLowerCase().includes(q))
+        .forEach(j => {
+          const div = document.createElement('div');
+          div.className = 'card';
+          let buttons = '';
+          if (isSeeker()) {
+            buttons = applied.has(j.id)
+              ? '<button class="applied" disabled>Applied ✓</button>'
+              : '<button class="apply" onclick="applyJob(' + j.id + ')">Apply</button>';
+          }
+          if (isEmployer()) {
+            buttons = '<button class="edit" onclick="editJob(' + j.id + ')">Edit</button>' +
+                      '<button class="del" onclick="deleteJob(' + j.id + ')">Delete</button>';
+          }
+          div.innerHTML = '<h3>' + j.title + '</h3><p>' + j.company + ' | ' + j.location +
+                          ' | ₹' + j.salary + '</p>' + buttons;
+          box.appendChild(div);
+        });
+    }
+
+    async function applyJob(jobId) {
+      const res = await fetch('/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: jobId })
+      });
+      if (res.ok) { applied.add(jobId); renderJobs(); return; }
+	  alert('Status ' + res.status + ': ' + await res.text());
+    }
+
+    function editJob(id) {
+      const j = jobs.find(x => x.id === id);
+      editId = id;
+      document.getElementById('title').value = j.title;
+      document.getElementById('company').value = j.company;
+      document.getElementById('location').value = j.location;
+      document.getElementById('salary').value = j.salary;
+      document.getElementById('formTitle').innerText = 'Edit Job';
+      window.scrollTo(0, 0);
+    }
+
+    function resetForm() {
+      editId = null;
+      ['title', 'company', 'location', 'salary'].forEach(i => document.getElementById(i).value = '');
+      document.getElementById('formTitle').innerText = 'Add Job';
+    }
+
+    async function saveJob() {
+      const job = {
+        title: document.getElementById('title').value,
+        company: document.getElementById('company').value,
+        location: document.getElementById('location').value,
+        salary: parseFloat(document.getElementById('salary').value) || 0
+      };
+      const url = editId ? '/jobs/' + editId : '/jobs';
+      const res = await fetch(url, {
+        method: editId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(job)
+      });
+      if (!res.ok) { alert('Save failed. Status: ' + res.status); return; }
+      resetForm();
+      loadJobs();
+    }
+
+    async function deleteJob(id) {
+      if (!confirm('Delete this job?')) return;
+      const res = await fetch('/jobs/' + id, { method: 'DELETE' });
+      if (!res.ok) { alert('Delete failed. Status: ' + res.status); return; }
+      loadJobs();
+    }
+
+    (async function init() {
+      showUser();
+      await loadApplied();
+      await loadJobs();
+    })();
+  </script>
+</body>
+</html>

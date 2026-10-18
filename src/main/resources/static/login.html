@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <style>
+    body { font-family: Arial; max-width: 400px; margin: 60px auto; }
+    input { display: block; margin: 10px 0; padding: 10px; width: 100%; box-sizing: border-box; }
+    button { padding: 10px 20px; background: #2563eb; color: white; border: 0; cursor: pointer; width: 100%; }
+    #msg { margin-top: 12px; color: #dc2626; }
+  </style>
+</head>
+<body>
+  <h2>Login</h2>
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <div id="msg"></div>
+  <p>New user? <a href="register.html">Register</a></p>
+
+  <script>
+    async function login() {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('user', JSON.stringify(data));
+        location.href = 'index.html';
+      } else {
+        document.getElementById('msg').innerText = data.error || 'Login failed';
+      }
+    }
+  </script>
+</body>
+</html>

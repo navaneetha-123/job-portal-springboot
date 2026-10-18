@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Register</title>
+  <style>
+    body { font-family: Arial; max-width: 400px; margin: 60px auto; }
+    input, select { display: block; margin: 10px 0; padding: 10px; width: 100%; box-sizing: border-box; }
+    button { padding: 10px 20px; background: #2563eb; color: white; border: 0; cursor: pointer; width: 100%; }
+    #msg { margin-top: 12px; color: #dc2626; }
+  </style>
+</head>
+<body>
+  <h2>Register</h2>
+  <input id="name" placeholder="Full name">
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <select id="role">
+    <option value="JOB_SEEKER">I am a Job Seeker</option>
+    <option value="EMPLOYER">I am an Employer</option>
+  </select>
+  <button onclick="register()">Register</button>
+  <div id="msg"></div>
+  <p>Already have an account? <a href="login.html">Login</a></p>
+
+  <script>
+    async function register() {
+      const res = await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: document.getElementById('name').value,
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value,
+          role: document.getElementById('role').value
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Registered! Please login.');
+        location.href = 'login.html';
+      } else {
+        document.getElementById('msg').innerText = data.error || 'Registration failed';
+      }
+    }
+  </script>
+</body>
+</html>
