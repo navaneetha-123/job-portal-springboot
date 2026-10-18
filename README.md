@@ -36,3 +36,7 @@ Java 17 | Spring Boot | Spring Security | Spring Data JPA (Hibernate) | MySQL | 
 
 ## Author
 Navaneetha Poola
+## Screenshots
+<img width="603" height="335" alt="Jobseeker" src="https://github.com/user-attachments/assets/c4f1bfc3-eb6a-49fe-bc64-2f6a23fb4976" />
+<img width="631" height="235" alt="employer" src="https://github.com/user-attachments/assets/75b08163-abdb-4762-8c1a-eb05fc51846b" />
+
